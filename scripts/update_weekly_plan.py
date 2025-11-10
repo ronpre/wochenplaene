@@ -193,7 +193,7 @@ def convert_plan_text(raw_text: str, start_date: dt.date) -> tuple[str, str]:
 
     parts: List[str] = []
     parts.append(f"  <h1>{html.escape(title)}</h1>")
-    parts.append(f"  <p><strong>Zeitraum:</strong> KW {iso_week:02d}/{iso_year}</p>")
+    parts.append(f"  <p>KW {iso_week:02d}/{iso_year}</p>")
 
     open_section = False
     open_list = False
