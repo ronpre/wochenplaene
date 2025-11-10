@@ -337,7 +337,7 @@ def render_index(plans: Sequence[Plan]) -> str:
         INDEX_STYLE_BLOCK,
         "</head>",
         "<body>",
-    "  <h1>Wochenplan Ernaehrung</h1>",
+    "  <h1>Wochenplan mit Rezepten</h1>",
         "  <ul>",
     ]
     for plan in sorted_plans:
