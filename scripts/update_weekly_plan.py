@@ -190,16 +190,15 @@ def convert_plan_text(raw_text: str, start_date: dt.date) -> tuple[str, str]:
         raise ValueError("Plan text must contain a title on the first non-empty line")
 
     iso_year, iso_week, _ = start_date.isocalendar()
-    period_text = format_period_text(start_date)
 
     parts: List[str] = []
     parts.append(f"  <h1>{html.escape(title)}</h1>")
-    parts.append(
-        f"  <p><strong>Zeitraum:</strong> KW {iso_week:02d}/{iso_year} ({period_text})</p>"
-    )
+    parts.append(f"  <p><strong>Zeitraum:</strong> KW {iso_week:02d}/{iso_year}</p>")
 
     open_section = False
     open_list = False
+    in_ingredient_section = False
+    current_ingredients: List[str] = []
 
     def ensure_section() -> None:
         nonlocal open_section
@@ -223,19 +222,25 @@ def convert_plan_text(raw_text: str, start_date: dt.date) -> tuple[str, str]:
     for line in body_lines:
         if not line:
             close_list()
+            in_ingredient_section = False
             continue
         if line.startswith("Gericht "):
             close_section()
             parts.append("  <section>")
             parts.append(f"    <h2>{html.escape(line)}</h2>")
             open_section = True
+            current_ingredients = []
+            in_ingredient_section = False
             continue
         if line.startswith("- "):
             ensure_section()
             if not open_list:
                 parts.append("    <ul>")
                 open_list = True
-            parts.append(f"      <li>{html.escape(line[2:].strip())}</li>")
+            item_text = line[2:].strip()
+            parts.append(f"      <li>{html.escape(item_text)}</li>")
+            if in_ingredient_section:
+                current_ingredients.append(item_text)
             continue
         if ":" in line:
             label, value = [segment.strip() for segment in line.split(":", 1)]
@@ -246,6 +251,8 @@ def convert_plan_text(raw_text: str, start_date: dt.date) -> tuple[str, str]:
                 open_section = True
                 if value:
                     parts.append(f"    <p>{html.escape(value)}</p>")
+                in_ingredient_section = False
+                current_ingredients = []
                 continue
             if label == "Zutaten":
                 ensure_section()
@@ -253,6 +260,8 @@ def convert_plan_text(raw_text: str, start_date: dt.date) -> tuple[str, str]:
                 parts.append(f"    <h3>{html.escape(label)}</h3>")
                 if value:
                     parts.append(f"    <p>{html.escape(value)}</p>")
+                in_ingredient_section = True
+                current_ingredients = []
                 continue
             if label in EMPHASIS_HEADINGS:
                 ensure_section()
@@ -263,6 +272,12 @@ def convert_plan_text(raw_text: str, start_date: dt.date) -> tuple[str, str]:
                     )
                 else:
                     parts.append(f"    <p><strong>{html.escape(label)}:</strong></p>")
+                if label == "Thermomix" and current_ingredients:
+                    einkauf = ", ".join(html.escape(item) for item in current_ingredients)
+                    parts.append(
+                        f"    <p><strong>Einkaufsliste:</strong> {einkauf}</p>"
+                    )
+                    current_ingredients = []
                 continue
             if value:
                 ensure_section()
@@ -327,11 +342,10 @@ def render_index(plans: Sequence[Plan]) -> str:
         "  <ul>",
     ]
     for plan in sorted_plans:
-        period_text = format_period_text(plan.start_date)
         lines.extend(
             [
                 "    <li>",
-                f"      <a href=\"{plan.kw_filename}\">KW {plan.iso_week:02d}/{plan.iso_year} ({period_text})</a>",
+                f"      <a href=\"{plan.kw_filename}\">KW {plan.iso_week:02d}/{plan.iso_year}</a>",
                 f"      <span>{html.escape(plan.title)}</span>",
                 "    </li>",
             ]
