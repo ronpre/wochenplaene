@@ -338,7 +338,6 @@ def render_index(plans: Sequence[Plan]) -> str:
         "</head>",
         "<body>",
     "  <h1>Wochenplan Ernaehrung</h1>",
-    "  <p class=\"meta\">Automatisch erzeugt. Neueste Pleane stehen oben.</p>",
         "  <ul>",
     ]
     for plan in sorted_plans:
